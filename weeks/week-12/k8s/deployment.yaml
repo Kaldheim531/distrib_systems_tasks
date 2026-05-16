@@ -1,1 +1,43 @@
-# В этом месте вам необходимо: Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devices-app
+  labels:
+    app: devices-app
+    project: devices-s14
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: devices-app
+  template:
+    metadata:
+      labels:
+        app: devices-app
+        project: devices-s14
+    spec:
+      containers:
+        - name: devices-container
+          image: devices-s14:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8226
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8226
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8226
+            initialDelaySeconds: 5
+            periodSeconds: 5

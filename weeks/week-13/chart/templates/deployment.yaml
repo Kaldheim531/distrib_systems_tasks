@@ -4,6 +4,7 @@ metadata:
   name: {{ .Chart.Name }}
   labels:
     app: {{ .Chart.Name }}
+    project: logs-s14
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -13,12 +14,35 @@ spec:
     metadata:
       labels:
         app: {{ .Chart.Name }}
+        project: logs-s14
     spec:
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Values.container.name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.targetPort }}
           env:
+            - name: PROJECT_CODE
+              value: "logs-s14"
             - name: APP_PORT
-              value: "{{ .Values.service.port }}"
+              value: "{{ .Values.service.targetPort }}"
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 5

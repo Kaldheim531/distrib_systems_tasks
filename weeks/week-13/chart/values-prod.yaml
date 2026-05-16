@@ -1,6 +1,13 @@
 replicaCount: 3
+
 image:
-  repository: primer/obraz
+  repository: logs-s14
   tag: "prod"
-service:
-  port: 8000
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "512Mi"

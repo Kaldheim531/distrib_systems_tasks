@@ -1,41 +1,40 @@
+TRANSITIONS = {
+    "NEW": {
+        "PAY_OK": "PAID",
+        "PAY_FAIL": "CANCELLED",
+        "CANCEL": "CANCELLED",
+    },
+    "PAID": {
+        "COMPLETE": "DONE",
+        "CANCEL": "CANCELLED",
+        "PAY_FAIL": "CANCELLED",
+    },
+    "DONE": {},
+    "CANCELLED": {},
+}
+
+
 def next_state(state: str, event: str) -> str:
-    # Состояния: NEW, PAID, DONE, CANCELLED
-    # События: CREATE, PAY_OK, PAY_FAIL, COMPLETE, CANCEL
-    
-    transitions = {
-        'NEW': {
-            'CREATE': 'NEW',
-            'PAY_OK': 'PAID',      
-            'PAY_FAIL': 'CANCELLED',
-            'COMPLETE': 'NEW',
-            'CANCEL': 'CANCELLED'
-        },
-        'PAID': {
-            'CREATE': 'PAID',
-            'PAY_OK': 'PAID',
-            'PAY_FAIL': 'CANCELLED',
-            'COMPLETE': 'DONE',
-            'CANCEL': 'CANCELLED'
-        },
-        'DONE': {
-            'CREATE': 'DONE',
-            'PAY_OK': 'DONE',
-            'PAY_FAIL': 'DONE',
-            'COMPLETE': 'DONE',
-            'CANCEL': 'DONE'
-        },
-        'CANCELLED': {
-            'CREATE': 'CANCELLED',
-            'PAY_OK': 'CANCELLED',
-            'PAY_FAIL': 'CANCELLED',
-            'COMPLETE': 'CANCELLED',
-            'CANCEL': 'CANCELLED'
-        }
-    }
-    
-    if state not in transitions:
-        return state
-    if event not in transitions[state]:
-        return state
-        
-    return transitions[state][event]
+    return TRANSITIONS.get(state, {}).get(event, state)
+
+
+def cancel_reserve():
+    return True
+
+
+def cancel_reserve_with_retry():
+    while True:
+        if cancel_reserve():
+            return True
+
+
+def run_invoice_saga(payment_ok: bool) -> str:
+    state = "NEW"
+
+    if payment_ok:
+        state = next_state(state, "PAY_OK")
+        return next_state(state, "COMPLETE")
+
+    state = next_state(state, "PAY_FAIL")
+    cancel_reserve_with_retry()
+    return state

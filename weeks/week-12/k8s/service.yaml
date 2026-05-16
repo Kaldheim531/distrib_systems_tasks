@@ -1,1 +1,16 @@
-# В этом месте вам необходимо: Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: devices-svc-s14
+  labels:
+    app: devices-app
+    project: devices-s14
+spec:
+  type: ClusterIP
+  selector:
+    app: devices-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8226

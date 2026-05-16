@@ -1,6 +1,26 @@
-replicaCount: 1
+replicaCount: 2
+
 image:
-  repository: primer/obraz
+  repository: logs-s14
   tag: "latest"
+  pullPolicy: IfNotPresent
+
+container:
+  name: logs-container
+
 service:
-  port: 8000
+  name: logs-svc-s14
+  type: ClusterIP
+  port: 80
+  targetPort: 8219
+
+probes:
+  path: /health
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"

@@ -1,3 +1,11 @@
+.git
 .venv
 __pycache__
 *.pyc
+.pytest_cache
+tests
+starter
+report.md
+week-10.md
+README.md
+questions.md

@@ -1,39 +1,42 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List
-import uuid
 
 app = FastAPI()
 
-# In-memory storage
-tickets_db = []
+tickets = []
+last_id = 0
 
-# Модель для входных данных (без id)
+
 class TicketCreate(BaseModel):
     name: str
-    status: str  # Ваше дополнительное поле из варианта
+    status: str
 
-# Модель для данных в БД (с id)
+
 class Ticket(TicketCreate):
-    id: str
+    id: int
 
-# GET /tickets - список всех билетов
-@app.get("/tickets", response_model=List[Ticket])
+
+@app.get("/tickets", response_model=list[Ticket])
 def get_tickets():
-    return tickets_db
+    return tickets
 
-# POST /tickets - создать новый билет
+
 @app.post("/tickets", response_model=Ticket, status_code=201)
 def create_ticket(ticket: TicketCreate):
-    ticket_dict = ticket.model_dump()
-    ticket_dict["id"] = str(uuid.uuid4())
-    tickets_db.append(ticket_dict)
-    return ticket_dict
+    global last_id
 
-# GET /tickets/{id} - получить билет по ID
+    last_id += 1
+    new_ticket = ticket.model_dump()
+    new_ticket["id"] = last_id
+    tickets.append(new_ticket)
+
+    return new_ticket
+
+
 @app.get("/tickets/{ticket_id}", response_model=Ticket)
-def get_ticket(ticket_id: str):
-    for ticket in tickets_db:
+def get_ticket(ticket_id: int):
+    for ticket in tickets:
         if ticket["id"] == ticket_id:
             return ticket
+
     raise HTTPException(status_code=404, detail="Ticket not found")

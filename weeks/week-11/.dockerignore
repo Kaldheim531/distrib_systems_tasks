@@ -1,0 +1,10 @@
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+tests
+starter
+README.md
+week-11.md
+questions.md

@@ -1,2 +1,256 @@
 <!doctype html>
-<!-- В этом месте вам необходимо: реализуйте WebRTC клиент -->
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>logs-s14 WebRTC chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2933;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .status {
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .chat {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      height: 70vh;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .messages {
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .message {
+      max-width: 70%;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #e8eef8;
+      word-break: break-word;
+    }
+
+    .message.me {
+      margin-left: auto;
+      background: #d9f2e5;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 10px;
+      padding: 12px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    input {
+      min-width: 0;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    button {
+      height: 40px;
+      border: 0;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>logs-s14 WebRTC chat</h1>
+      <div class="status" id="status">signaling...</div>
+    </header>
+
+    <main class="chat">
+      <div class="messages" id="messages"></div>
+      <form id="form">
+        <input id="text" autocomplete="off" placeholder="Сообщение" disabled>
+        <button id="send" disabled>Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const messagesEl = document.getElementById("messages");
+    const form = document.getElementById("form");
+    const input = document.getElementById("text");
+    const sendButton = document.getElementById("send");
+
+    const wsHost = location.host || "localhost:8179";
+    const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${wsProtocol}://${wsHost}/ws`);
+    const peer = new RTCPeerConnection({
+      iceServers: [{urls: "stun:stun.l.google.com:19302"}]
+    });
+
+    let role = "";
+    let channel = null;
+    let offerStarted = false;
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function addMessage(text, own) {
+      const item = document.createElement("div");
+      item.className = own ? "message me" : "message";
+      item.textContent = text;
+      messagesEl.appendChild(item);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function enableChat() {
+      input.disabled = false;
+      sendButton.disabled = false;
+      input.focus();
+      setStatus("p2p connected");
+    }
+
+    function setupChannel(nextChannel) {
+      channel = nextChannel;
+      channel.onopen = enableChat;
+      channel.onmessage = event => addMessage(event.data, false);
+      channel.onclose = () => {
+        input.disabled = true;
+        sendButton.disabled = true;
+        setStatus("p2p closed");
+      };
+    }
+
+    async function sendSignal(message) {
+      socket.send(JSON.stringify(message));
+    }
+
+    async function startOffer() {
+      if (offerStarted || role !== "caller") {
+        return;
+      }
+
+      offerStarted = true;
+      setupChannel(peer.createDataChannel("chat"));
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      await sendSignal({type: "offer", sdp: peer.localDescription});
+    }
+
+    peer.ondatachannel = event => setupChannel(event.channel);
+
+    peer.onicecandidate = event => {
+      if (event.candidate) {
+        sendSignal({type: "candidate", candidate: event.candidate});
+      }
+    };
+
+    socket.onopen = () => setStatus("waiting for second tab");
+    socket.onerror = () => setStatus("signaling error");
+    socket.onclose = () => {
+      if (!channel || channel.readyState !== "open") {
+        setStatus("signaling closed");
+      }
+    };
+
+    socket.onmessage = async event => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === "role") {
+        role = message.role;
+        return;
+      }
+
+      if (message.type === "ready") {
+        await startOffer();
+        return;
+      }
+
+      if (message.type === "offer") {
+        await peer.setRemoteDescription(message.sdp);
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        await sendSignal({type: "answer", sdp: peer.localDescription});
+        return;
+      }
+
+      if (message.type === "answer") {
+        await peer.setRemoteDescription(message.sdp);
+        return;
+      }
+
+      if (message.type === "candidate") {
+        await peer.addIceCandidate(message.candidate);
+        return;
+      }
+
+      if (message.type === "peer-left") {
+        setStatus("peer left");
+      }
+    };
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const text = input.value.trim();
+
+      if (!text || !channel || channel.readyState !== "open") {
+        return;
+      }
+
+      channel.send(text);
+      addMessage(text, true);
+      input.value = "";
+    });
+  </script>
+</body>
+</html>

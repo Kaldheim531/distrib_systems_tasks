@@ -1,16 +1,31 @@
 syntax = "proto3";
 
-// Опишите ваш пакет и сервис здесь
-// package example;
+package reviews.v1;
 
-// service MyService {
-//   rpc MyMethod (MyRequest) returns (MyResponse);
-// }
+service ReviewsService {
+  rpc CreateReview (CreateReviewRequest) returns (Review);
+  rpc GetReview (GetReviewRequest) returns (Review);
+  rpc ListReviews (ListReviewsRequest) returns (ListReviewsResponse);
+}
 
-// message MyRequest {
-//   string id = 1;
-// }
+message Review {
+  int32 id = 1;
+  string name = 2;
+  int32 rating = 3;
+}
 
-// message MyResponse {
-//   string result = 1;
-// }
+message CreateReviewRequest {
+  string name = 1;
+  int32 rating = 2;
+}
+
+message GetReviewRequest {
+  int32 id = 1;
+}
+
+message ListReviewsRequest {
+}
+
+message ListReviewsResponse {
+  repeated Review reviews = 1;
+}
