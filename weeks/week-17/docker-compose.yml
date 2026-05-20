@@ -7,6 +7,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8161
     ports:
       - "8161:8161"
+      - "50051:50051"
 
   notify-svc-s14:
     build:

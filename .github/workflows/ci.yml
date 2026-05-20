@@ -43,6 +43,7 @@ jobs:
           make test WEEK=12
           make test WEEK=13
           make test WEEK=14
+          make test WEEK=17
 
       - name: Build Docker image
         run: |
